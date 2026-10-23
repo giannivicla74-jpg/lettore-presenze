@@ -200,7 +200,8 @@ const ExcelXlsm = (() => {
     for (const [name, n] of Object.entries(monthsMap)) {
       if (lower.includes(name)) { foundMonth = n; break; }
     }
-    const yearMatch = lower.match(/\b(202[4-9]|203[0-9])\b/);
+    // Anno anche attaccato a "_" o "-" (es. "_2027"): \b non lo trovava, perché "_" conta come lettera
+    const yearMatch = lower.match(/(?:^|[^0-9])(202[4-9]|203[0-9])(?![0-9])/);
     if (yearMatch) foundYear = parseInt(yearMatch[1]);
     if (!foundMonth) {
       const numMonthMatch = lower.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[-_/](202[4-9]|203[0-9])/);
@@ -226,37 +227,36 @@ const ExcelXlsm = (() => {
     const zip = await open(bytes);
     let sheetXml = await readText(zip, 'xl/worksheets/sheet1.xml');
 
-    // 1. Date in colonna A per ciascuno dei 31 giorni (giorno d: righe da 2 + (d - 1) * 69 per 68 righe)
-    for (let day = 1; day <= 31; day++) {
-      const rStart = 2 + (day - 1) * 69;
-      const rEnd = rStart + 67;
-      const daySerial = day <= daysInMonth ? (baseSerial + (day - 1)) : '';
+    // Ogni giorno occupa 69 righe a partire dalla 2: giorno e posizione nel giorno a partire dal numero di riga.
+    // Il foglio si percorre UNA volta sola (prima veniva riletto per ogni riga: migliaia di volte, molto lento)
+    const LAST_ROW = 2 + 31 * 69 - 1;
+    const dayOfRow = r => Math.floor((r - 2) / 69) + 1;
 
-      for (let r = rStart; r <= rEnd; r++) {
-        sheetXml = sheetXml.replace(new RegExp(`<c r="A${r}"([^>]*?)(?:\\/>|>([\\s\\S]*?)<\\/c>)`), (m, attrs, inner) => {
-          const sMatch = attrs.match(/s="(\d+)"/);
-          const sAttr = sMatch ? ` s="${sMatch[1]}"` : '';
-          let formulaPart = '';
-          if (inner) {
-            const fMatch = inner.match(/<f[^>]*>[\s\S]*?<\/f>|<f[^>]*\/>/);
-            if (fMatch) formulaPart = fMatch[0];
-          }
-          return daySerial !== ''
-            ? `<c r="A${r}"${sAttr}>${formulaPart}<v>${daySerial}</v></c>`
-            : `<c r="A${r}"${sAttr}>${formulaPart}</c>`;
-        });
+    // 1. Date in colonna A (righe 0..67 di ogni giorno): data del giorno, vuota oltre il fine mese
+    sheetXml = sheetXml.replace(/<c r="A(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g, (m, rStr, attrs, inner) => {
+      const r = parseInt(rStr);
+      if (r < 2 || r > LAST_ROW || (r - 2) % 69 > 67) return m;
+      const day = dayOfRow(r);
+      const sMatch = attrs.match(/s="(\d+)"/);
+      const sAttr = sMatch ? ` s="${sMatch[1]}"` : '';
+      let formulaPart = '';
+      if (inner) {
+        const fMatch = inner.match(/<f[^>]*>[\s\S]*?<\/f>|<f[^>]*\/>/);
+        if (fMatch) formulaPart = fMatch[0];
       }
+      return day <= daysInMonth
+        ? `<c r="A${r}"${sAttr}>${formulaPart}<v>${baseSerial + (day - 1)}</v></c>`
+        : `<c r="A${r}"${sAttr}>${formulaPart}</c>`;
+    });
 
-      // Righe nascoste per i giorni oltre il fine mese
-      const isHidden = day > daysInMonth;
-      for (let r = rStart; r <= (rStart + 68); r++) {
-        sheetXml = sheetXml.replace(new RegExp(`<row r="${r}"([^>]*)>`), (m, rowAttrs) => {
-          let cleanAttrs = rowAttrs.replace(/\s*hidden="1"/g, '');
-          if (isHidden) cleanAttrs += ' hidden="1"';
-          return `<row r="${r}"${cleanAttrs}>`;
-        });
-      }
-    }
+    // Righe nascoste per i giorni oltre il fine mese, visibili tutte le altre
+    sheetXml = sheetXml.replace(/<row r="(\d+)"([^>]*?)(\/?)>/g, (m, rStr, rowAttrs, selfClose) => {
+      const r = parseInt(rStr);
+      if (r < 2 || r > LAST_ROW) return m;
+      let cleanAttrs = rowAttrs.replace(/\s*hidden="1"/g, '');
+      if (dayOfRow(r) > daysInMonth) cleanAttrs += ' hidden="1"';
+      return `<row r="${r}"${cleanAttrs}${selfClose}>`;
+    });
 
     // 2. Svuota commesse (col C) e ore (col D:J) per tutte le righe operai (2:2139)
     sheetXml = sheetXml.replace(/<row r="(\d+)"([^>]*)>([\s\S]*?)<\/row>/g, (rowMatch, rowNumStr, rowAttrs, rowInner) => {
