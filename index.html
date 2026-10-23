@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lettore Presenze AI - Rapportini Mod. 22.03</title>
+  <meta name="description" content="Lettura ottica con AI dei rapportini di cantiere e compilazione automatica delle presenze nel file Excel">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0b0f19">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- PDF.js per rendering client-side ad altissima definizione -->
+  <script src="libs/pdf.min.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="logo-badge">⚡</div>
+      <div class="brand-text">
+        <h1>Vi.Cla Future <span class="tag">AI Vision 2.0</span></h1>
+        <p>Lettore Ottico Intelligente Rapportini Cantiere (Mod. 22.03)</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <div class="excel-picker-box">
+        <span class="status-dot"></span>
+        <label for="excelFileSelect" class="excel-picker-label">Mese:</label>
+        <select id="excelFileSelect" class="excel-select" title="Seleziona la cartella Excel del mese in cui registrare le presenze">
+          <option value="">Ricerca cartelle Excel...</option>
+        </select>
+        <button class="btn-new-month" id="btnChangeFolder" title="Scegli un'altra cartella dei file Excel">
+          📁 Cartella
+        </button>
+        <button class="btn-new-month" id="btnNewMonth" title="Crea una nuova cartella mese partendo dal modello Master">
+          ➕ Nuovo Mese
+        </button>
+      </div>
+
+      <button class="btn-primary" id="btnOpenBatch" style="padding: 7px 14px; font-size: 0.82rem; background: linear-gradient(135deg, #8b5cf6, #6366f1); border-color: rgba(167, 139, 250, 0.4);" title="Elabora automaticamente più PDF/rapportini uno dopo l'altro">
+        ⚡ Scansione Multipla
+      </button>
+
+      <button class="btn-icon" id="btnOpenSettings">
+        ⚙️ Configura API Key
+      </button>
+    </div>
+  </header>
+
+  <!-- App Main Content -->
+  <main class="app-container">
+    
+    <!-- Left Column: Document Scanner Viewer -->
+    <section class="viewer-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📄</span> Scansione Rapportino Cartaceo
+        </div>
+        <div class="viewer-toolbar">
+          <button class="tool-btn" id="btnZoomOut" title="Rimpicciolisci">-</button>
+          <button class="tool-btn" id="btnZoomReset" title="Reimposta Zoom">100%</button>
+          <button class="tool-btn" id="btnZoomIn" title="Ingrandisci">+</button>
+          <button class="tool-btn" id="btnRotate180" title="Ruota 180° (Retro Capovolto)">🔄 180°</button>
+          <button class="tool-btn" id="btnRotate90" title="Ruota 90°">↷ 90°</button>
+        </div>
+      </div>
+
+      <!-- File Dropzone -->
+      <div class="dropzone-area" id="dropzone">
+        <div class="dropzone-icon">📥</div>
+        <div class="dropzone-title">Trascina qui il Rapportino (PDF a 2 pagine o Immagine)</div>
+        <div class="dropzone-desc">oppure fai clic per selezionare il file dal tuo computer</div>
+        <input type="file" id="fileInput" accept="application/pdf,image/*" style="display:none;" multiple>
+      </div>
+
+      <!-- Page Switcher Tabs -->
+      <div class="page-tabs" id="pageTabs" style="display: none;">
+        <button class="page-tab-btn active" id="tabFront">
+          📋 Pagina 1: Fronte (Operai & Cantiere)
+        </button>
+        <button class="page-tab-btn" id="tabBack">
+          ⏱️ Pagina 2: Retro (Tabella Ore Turno)
+        </button>
+      </div>
+
+      <!-- Viewport Canvas -->
+      <div class="canvas-viewport" id="viewport">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="docCanvas"></canvas>
+        </div>
+        <div class="viewport-hint">
+          ✋ Trascina con il mouse per spostare • 🔍 Rotella per zoomare • Doppio clic per adattare
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Verification & Editing Form -->
+    <section class="editor-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>🔍</span> Anteprima e Verifica Dati (Mod. 22.03)
+        </div>
+        <div class="header-actions">
+          <button class="btn-icon" id="btnToggleWide" title="Espandi/Riduci vista" style="padding: 5px 10px; font-size: 0.78rem;">
+            ⛶ Allarga Tabella
+          </button>
+          
+          <button class="btn-primary" id="btnAnalyzeAI" disabled>
+            🤖 Analizza con AI Vision
+          </button>
+        </div>
+      </div>
+
+      <div class="editor-content">
+        
+        <!-- Metadata Grid -->
+        <div class="metadata-grid">
+          <div class="form-group">
+            <label for="metaDate">Data Rapportino</label>
+            <input type="text" id="metaDate" class="form-input" placeholder="es. 15/10/2026">
+          </div>
+          <div class="form-group">
+            <label for="metaDay">Giorno Mese (1-31)</label>
+            <input type="number" id="metaDay" class="form-input" min="1" max="31" value="15">
+          </div>
+          <div class="form-group">
+            <label for="metaCommessa">Commessa</label>
+            <input type="text" id="metaCommessa" class="form-input" placeholder="es. CA 04-3695/25">
+          </div>
+          <div class="form-group">
+            <label for="metaCantiere">Sito / Cantiere</label>
+            <input type="text" id="metaCantiere" class="form-input" placeholder="es. CASERTA">
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="metaCaposquadra">Caposquadra</label>
+            <input type="text" id="metaCaposquadra" class="form-input" placeholder="es. ROSSI M.">
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label for="metaRespCommessa">Responsabile Commessa</label>
+            <input type="text" id="metaRespCommessa" class="form-input" placeholder="es. VERDI L.">
+          </div>
+        </div>
+
+        <!-- Detection Banner -->
+        <div class="detection-banner" id="detectionBanner" style="display: none;">
+          <div class="banner-info">
+            <span class="banner-icon">💡</span>
+            <div class="banner-text">
+              <h4 id="bannerTitle">Analisi AI Completata</h4>
+              <p id="bannerDesc">Verifica le ore estratte prima di procedere con la scrittura su Excel.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Presenze Table -->
+        <div class="table-container">
+          <table class="presenze-table" id="presenzeTable">
+            <thead>
+              <tr>
+                <th style="min-width: 180px;">Lavoratore</th>
+                <th style="width: 72px; text-align: center;">Turno</th>
+                <th style="min-width: 120px;">Commessa</th>
+                <th style="width: 44px; text-align: center;">OR</th>
+                <th style="width: 44px; text-align: center;">SD</th>
+                <th style="width: 44px; text-align: center;">ON</th>
+                <th style="width: 44px; text-align: center;">SN</th>
+                <th style="width: 44px; text-align: center;">V</th>
+                <th style="width: 50px; text-align: center;">TOT</th>
+                <th style="width: 32px;"></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td colspan="10" style="text-align: center; color: var(--text-dim); padding: 30px;">
+                  Carica un rapportino a sinistra e fai clic su "Analizza con AI Vision", oppure aggiungi una riga manualmente.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-icon" id="btnAddRow" style="align-self: flex-start;">
+            ➕ Aggiungi Operaio Manualmente
+          </button>
+          <button class="btn-icon" id="btnClearTable" style="align-self: flex-start; color: var(--danger);">
+            🗑️ Svuota Tabella
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Action Footer -->
+      <div class="panel-footer">
+        <div class="summary-stats">
+          <div class="summary-item">
+            Operai Rilevati: <strong id="statWorkers">0</strong>
+          </div>
+          <div class="summary-item">
+            Ore Totali: <strong id="statHours">0</strong>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <div style="display: flex; gap: 12px;">
+            <button class="btn-icon" id="btnExportJson" title="Esporta JSON">
+              📋 Copia JSON
+            </button>
+            <button class="btn-success" id="btnWriteExcel">
+              ✅ CONFERMA E SCRIVI SU EXCEL
+            </button>
+          </div>
+          <div style="font-size: 0.72rem; color: #94a3b8;">
+            Destinazione: <strong style="color: #60a5fa;" id="currentDestFile">Caricamento...</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal Nuovo Mese Excel -->
+  <div class="modal-overlay" id="newMonthModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📁 Crea Cartella Excel per Nuovo Mese</h3>
+        <button class="tool-btn" id="btnCloseNewMonth">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">
+        Duplica fedelmente il modello <strong>Master_Operai_2027.xlsm</strong> mantenendo al 100% tutte le formule, macro e formattazioni originali.
+      </p>
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label for="newMonthFileName">NOME DEL FILE EXCEL (.xlsm)</label>
+        <input type="text" id="newMonthFileName" class="form-input" placeholder="es. Presenze_10-Ottobre_2026.xlsm" value="Presenze_10-Ottobre_2026.xlsm">
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+        <span style="font-size: 0.75rem; color: var(--text-muted); align-self: center;">Scelta rapida:</span>
+        <button type="button" class="btn-quick-month" data-month="Presenze_10-Ottobre_2026.xlsm">10-Ottobre 2026</button>
+        <button type="button" class="btn-quick-month" data-month="Presenze_11-Novembre_2026.xlsm">11-Novembre 2026</button>
+        <button type="button" class="btn-quick-month" data-month="Presenze_12-Dicembre_2026.xlsm">12-Dicembre 2026</button>
+        <button type="button" class="btn-quick-month" data-month="Presenze_01-Gennaio_2027.xlsm">01-Gennaio 2027</button>
+        <button type="button" class="btn-quick-month" data-month="Presenze_02-Febbraio_2027.xlsm">02-Febbraio 2027</button>
+        <button type="button" class="btn-quick-month" data-month="Presenze_03-Marzo_2027.xlsm">03-Marzo 2027</button>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-icon" id="btnCancelNewMonth">Annulla</button>
+        <button class="btn-success" id="btnConfirmNewMonth">➕ Crea e Imposta Come Attivo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal (API Key) -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Configurazione Gemini AI Vision</h3>
+        <button class="tool-btn" id="btnCloseSettings">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 16px;">
+        Inserisci la tua chiave API Google Gemini (oppure usa la chiave gratuita da Google AI Studio). Viene salvata in modo sicuro nel browser di questa postazione.
+      </p>
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label for="geminiApiKey">GEMINI API KEY</label>
+        <input type="password" id="geminiApiKey" class="form-input" placeholder="AIzaSy...">
+      </div>
+      <div id="apiKeyTestStatus" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 16px; line-height: 1.4;"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <button class="btn-icon" id="btnTestApiKey" type="button" style="font-size: 0.82rem; padding: 8px 12px;">🔍 Verifica Connessione</button>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-icon" id="btnCancelSettings">Annulla</button>
+          <button class="btn-primary" id="btnSaveSettings">Salva Chiave</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Modal (Scansione Multipla) -->
+  <div class="modal-overlay" id="batchModal">
+    <div class="modal-box" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <span>⚡</span> Scansione Multipla Rapportini (Batch Automatico)
+        </h3>
+        <button class="tool-btn" id="btnCloseBatch">✕</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
+        Seleziona tutti i file PDF o foto dei rapportini del mese (anche 30 o più). Il sistema leggerà ciascun foglio con l'AI e potrà scriverlo direttamente sul file Excel selezionato (<strong><span id="batchTargetFileName"></span></strong>).
+      </p>
+
+      <!-- Batch Drop Area -->
+      <div class="dropzone-area" id="batchDropzone" style="padding: 24px 16px; margin-bottom: 16px; cursor: pointer;">
+        <div class="dropzone-icon" style="font-size: 2rem;">📂</div>
+        <div class="dropzone-title" style="font-size: 0.95rem;">Seleziona o Trascina qui tutti i PDF dei Rapportini</div>
+        <div class="dropzone-desc">Puoi selezionare più file contemporaneamente</div>
+        <input type="file" id="batchFileInput" accept="application/pdf,image/*" multiple style="display:none;">
+      </div>
+
+      <!-- File List Preview -->
+      <div id="batchListContainer" style="display: none; max-height: 220px; overflow-y: auto; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <span id="batchCountBadge">0 file selezionati</span>
+          <button id="btnClearBatchList" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.75rem;">Svuota lista</button>
+        </div>
+        <ul id="batchFilesList" style="list-style: none; margin: 0; padding: 0; font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;"></ul>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="batchProgressArea" style="display: none; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 6px;">
+          <span id="batchProgressText" style="color: #60a5fa; font-weight: 600;">Elaborazione in corso...</span>
+          <span id="batchProgressPercent" style="color: var(--text-muted);">0%</span>
+        </div>
+        <div style="background: rgba(15, 23, 42, 0.8); height: 8px; border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+          <div id="batchProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #6366f1, #10b981); transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Opzioni di scrittura -->
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: 0.82rem; color: var(--text-muted);">
+        <input type="checkbox" id="batchAutoSaveExcel" checked style="accent-color: var(--primary);">
+        <label for="batchAutoSaveExcel" style="cursor: pointer;">
+          Salva automaticamente in Excel i rapportini letti senza dubbi (quelli con dubbi aspettano il tuo controllo)
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn-icon" id="btnCancelBatch">Chiudi</button>
+        <button class="btn-success" id="btnStartBatch" disabled style="background: linear-gradient(135deg, #10b981, #059669);">
+          🚀 Avvia Scansione Batch
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Conflitti: dati già presenti in Excel per gli stessi operai/turni -->
+  <div class="modal-overlay" id="conflictModal">
+    <div class="modal-box" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3>⚠️ Dati già presenti in Excel</h3>
+        <button class="tool-btn" id="btnCloseConflict">✕</button>
+      </div>
+      <p id="conflictIntro" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;"></p>
+      <div id="conflictList" class="conflict-list"></div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+        <button class="btn-icon" id="btnConflictCancel">Annulla</button>
+        <button class="btn-icon" id="btnConflictSkip">Scrivi solo gli altri</button>
+        <button class="btn-success" id="btnConflictOverwrite" style="background: linear-gradient(135deg, #d97706, #f59e0b);">Sovrascrivi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collegamento alla cartella dei file Excel: visibile finché la cartella non è collegata -->
+  <div id="folderBanner" class="server-down-banner folder-banner" hidden>
+    <span id="folderBannerText">Collega la cartella dei file Excel.</span>
+    <button id="btnFolderAction" class="folder-banner-btn">📁 Collega cartella Excel</button>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer"></div>
+
+  <script src="libs/jszip.min.js"></script>
+  <script src="excel.js"></script>
+  <script src="cartella.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // App installabile (PWA): il service worker conserva i file dell'app per aprirla anche con rete lenta
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker non registrato:', err)));
+    }
+  </script>
+</body>
+</html>
