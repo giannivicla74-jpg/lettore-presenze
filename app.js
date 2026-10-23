@@ -86,6 +86,10 @@ const apiKeyTestStatus = document.getElementById('apiKeyTestStatus');
 // Carica API Key da localStorage
 const savedApiKey = localStorage.getItem('gemini_api_key') || '';
 if (geminiApiKeyInput) geminiApiKeyInput.value = savedApiKey;
+const btnToggleApiKey = document.getElementById('btnToggleApiKey');
+if (btnToggleApiKey && geminiApiKeyInput) {
+  btnToggleApiKey.addEventListener('click', () => geminiApiKeyInput.classList.toggle('api-key-hidden'));
+}
 
 // Elementi Gestione File Excel Mensile
 const excelFileSelect = document.getElementById('excelFileSelect');
@@ -659,8 +663,8 @@ let cachedCandidateModels = null;
 
 // Rileva automaticamente i modelli Gemini disponibili per questa API Key
 async function getAvailableGeminiModels(apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-  const res = await fetch(url);
+  // La chiave va nell'intestazione, non nell'indirizzo: gli indirizzi possono finire in cronologia e registri
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models', { headers: { 'x-goog-api-key': apiKey } });
   if (!res.ok) {
     let errDetail = '';
     try {
@@ -1131,10 +1135,10 @@ async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
     const timeoutId = setTimeout(() => controller.abort(), 40000);
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         signal: controller.signal,
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }, ...imageParts] }],

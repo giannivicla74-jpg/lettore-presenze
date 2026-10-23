@@ -979,3 +979,8 @@ canvas#docCanvas {
 .folder-banner-btn:hover {
   filter: brightness(0.95);
 }
+
+/* Chiave API nascosta senza usare una casella "password" (che il browser riempirebbe con password salvate) */
+.api-key-hidden {
+  -webkit-text-security: disc;
+}

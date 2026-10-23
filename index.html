@@ -264,7 +264,13 @@
       </p>
       <div class="form-group" style="margin-bottom: 15px;">
         <label for="geminiApiKey">GEMINI API KEY</label>
-        <input type="password" id="geminiApiKey" class="form-input" placeholder="AIzaSy...">
+        <!-- Non "password": il browser la riempirebbe da solo con password salvate di altre app sullo stesso indirizzo.
+             I caratteri restano nascosti con lo stile api-key-hidden; il pulsante 👁 li mostra -->
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="geminiApiKey" class="form-input api-key-hidden" placeholder="Incolla qui la chiave Gemini"
+            autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
+          <button class="btn-icon" id="btnToggleApiKey" type="button" title="Mostra o nascondi la chiave" style="padding: 6px 12px;">👁</button>
+        </div>
       </div>
       <div id="apiKeyTestStatus" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 16px; line-height: 1.4;"></div>
       <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
