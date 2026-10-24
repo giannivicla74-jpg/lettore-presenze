@@ -1014,3 +1014,9 @@ canvas#docCanvas {
   color: #fff;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
 }
+
+/* Logo dell'app (immagine) al posto del fulmine */
+.logo-img {
+  background: none;
+  object-fit: cover;
+}

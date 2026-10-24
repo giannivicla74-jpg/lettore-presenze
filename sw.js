@@ -1,11 +1,11 @@
 // Service worker del Lettore Presenze AI: conserva i file dell'app per aprirla anche con rete lenta o assente.
 // Strategia "prima la rete": quando c'è internet si scarica sempre la versione aggiornata dell'app,
 // altrimenti si usa la copia conservata. Le chiamate a Gemini e i file Excel non passano di qui.
-const CACHE = 'lettore-presenze-v6';
+const CACHE = 'lettore-presenze-v7';
 const FILES = [
   './', 'index.html', 'style.css', 'app.js', 'excel.js', 'cartella.js', 'manifest.webmanifest',
   'libs/pdf.min.js', 'libs/pdf.worker.min.js', 'libs/jszip.min.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/logo.png'
 ];
 
 self.addEventListener('install', event => {
