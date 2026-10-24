@@ -1020,3 +1020,10 @@ canvas#docCanvas {
   background: none;
   object-fit: cover;
 }
+
+/* Percentuale di zoom più piccola: "100%" deve stare comodo nel pulsante */
+#btnZoomReset {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
