@@ -759,6 +759,7 @@ btnAnalyzeAI.addEventListener('click', async () => {
       btnAnalyzeAI.innerHTML = `⏳ Analisi ${activeModelText} (${elapsed}s)...`;
     }, state.backRotation);
     populateExtractedData(analysisResult);
+    if (analysisResult.tempi) bannerDesc.textContent += ` • ⏱ ${formatTempiLettura(analysisResult.tempi)}`;
     showToast(`Rapportino estratto con successo in ${elapsed}s con ${activeModelText}!`, 'success');
   } catch (err) {
     console.error('Errore analisi Gemini:', err);
@@ -1096,17 +1097,19 @@ function mergeFrontAndBack(front, back, commesseList = []) {
 // Attesa con possibilità di mostrare il conto alla rovescia
 const sleepMs = ms => new Promise(res => setTimeout(res, ms));
 
-// Wrapper: se Google risponde 429 (quota/minuto) attende e riprova automaticamente
-async function callGeminiJSON(apiKey, prompt, images, onModelTry) {
+// Wrapper: se Google risponde 429 (quota/minuto) attende e riprova automaticamente.
+// stats (facoltativo) raccoglie modello, durata ed esito di ogni richiesta e le attese, per il resoconto dei tempi
+async function callGeminiJSON(apiKey, prompt, images, onModelTry, stats = null) {
   const MAX_ROUNDS = 4;
   for (let round = 1; round <= MAX_ROUNDS; round++) {
     try {
-      return await callGeminiJSONOnce(apiKey, prompt, images, onModelTry);
+      return await callGeminiJSONOnce(apiKey, prompt, images, onModelTry, stats);
     } catch (e) {
       if (e && e.isRateLimit && round < MAX_ROUNDS) {
         const wait = Math.min(Math.max(e.retryAfterMs || 15000, 8000), 30000);
         console.warn(`Quota Google (429): attendo ${Math.round(wait / 1000)}s e riprovo (tentativo ${round}/${MAX_ROUNDS - 1})`);
         showToast(`Quota Google al limite: nuovo tentativo automatico tra ${Math.round(wait / 1000)}s...`, 'info');
+        if (stats) stats.attesaMs += wait;
         await sleepMs(wait);
         continue;
       }
@@ -1115,7 +1118,7 @@ async function callGeminiJSON(apiKey, prompt, images, onModelTry) {
   }
 }
 
-async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
+async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry, stats = null) {
   const imageParts = images.map(imgDataUrl => {
     const base64Data = imgDataUrl.split(',')[1];
     const mimeType = imgDataUrl.split(';')[0].split(':')[1];
@@ -1134,6 +1137,8 @@ async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 40000);
 
+    const startedAt = performance.now();
+    const note = esito => { if (stats) stats.richieste.push({ modello: modelName, ms: performance.now() - startedAt, esito }); };
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
       const response = await fetch(url, {
@@ -1152,6 +1157,7 @@ async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
       });
 
       clearTimeout(timeoutId);
+      note(response.ok ? 'ok' : response.status === 429 ? 'quota' : String(response.status));
 
       if (response.ok) {
         const jsonResponse = await response.json();
@@ -1190,6 +1196,7 @@ async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
     } catch (e) {
       clearTimeout(timeoutId);
       if (e.name === 'AbortError') {
+        note('nessuna risposta');
         console.warn(`Timeout scaduto (40s) con il modello ${modelName}`);
         lastError = new Error(`Il modello ${modelName} non ha risposto entro 40 secondi.`);
       } else {
@@ -1209,6 +1216,20 @@ async function callGeminiJSONOnce(apiKey, prompt, images, onModelTry) {
     throw err;
   }
   throw lastError || new Error('Nessun modello Gemini ha risposto con successo');
+}
+
+// Resoconto leggibile dei tempi di una lettura (per capire subito se la lentezza dipende da modello o quota)
+function formatTempiLettura(tempi) {
+  if (!tempi) return '';
+  const s = ms => (ms / 1000).toFixed(1).replace('.', ',') + 's';
+  const lato = (nome, st) => {
+    if (!st.richieste.length) return '';
+    const parti = st.richieste.map(r => `${r.modello.replace('gemini-', '')} ${s(r.ms)}${r.esito === 'ok' ? '' : ' (' + r.esito + ')'}`);
+    return `${nome}: ${parti.join(' → ')}`;
+  };
+  const attesa = tempi.fronte.attesaMs + tempi.retro.attesaMs;
+  return [lato('fronte', tempi.fronte), lato('retro', tempi.retro), `attese per limite quota Google: ${attesa ? s(attesa) : 'nessuna'}`]
+    .filter(Boolean).join(' · ');
 }
 
 // Ruota un'immagine (dataURL) di 90/180/270 gradi in senso orario
@@ -1245,14 +1266,17 @@ async function callGeminiVision(apiKey, images, onModelTry, backRotation = 180) 
     ? `\n\nELENCO COMMESSE VALIDE (dal file Excel aziendale): ${commesseList.join(' ; ')}\nLa commessa scritta a mano corrisponde di norma a una di queste: usale per interpretare le cifre poco chiare, ma trascrivi ciò che è scritto.`
     : '';
 
+  const tempi = { fronte: { richieste: [], attesaMs: 0 }, retro: { richieste: [], attesaMs: 0 } };
   const [front, back] = await Promise.all([
-    callGeminiJSON(apiKey, FRONT_PROMPT + hint, [frontImg], onModelTry),
-    backImg ? sleepMs(1500).then(() => callGeminiJSON(apiKey, BACK_PROMPT + hint, [backImg], onModelTry)) : Promise.resolve(null)
+    callGeminiJSON(apiKey, FRONT_PROMPT + hint, [frontImg], onModelTry, tempi.fronte),
+    backImg ? sleepMs(1500).then(() => callGeminiJSON(apiKey, BACK_PROMPT + hint, [backImg], onModelTry, tempi.retro)) : Promise.resolve(null)
   ]);
 
   console.log('Lettura fronte:', front);
   console.log('Lettura retro:', back);
-  return mergeFrontAndBack(front, back, commesseList);
+  const merged = mergeFrontAndBack(front, back, commesseList);
+  merged.tempi = tempi;
+  return merged;
 }
 
 // Operai dalla tabella presenze del file Excel attivo (riletti a ogni analisi e al cambio di file:
