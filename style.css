@@ -984,3 +984,33 @@ canvas#docCanvas {
 .api-key-hidden {
   -webkit-text-security: disc;
 }
+
+/* Piè di pagina con il marchio GC CodeLab */
+.brand-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 22px 14px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.brand-footer strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.brand-footer-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
