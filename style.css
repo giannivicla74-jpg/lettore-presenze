@@ -1027,3 +1027,76 @@ canvas#docCanvas {
   font-weight: 600;
   letter-spacing: -0.2px;
 }
+
+/* ============================================================
+   TEMA CHIARO (pulsante ☀️/🌙 nell'intestazione, scelta ricordata nel browser)
+   Le variabili cambiano i colori principali; sotto, i punti che avevano colori scuri scritti direttamente
+   ============================================================ */
+html[data-theme="light"] {
+  --bg-primary: #eef2f7;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-card-hover: #ffffff;
+  --border-color: rgba(100, 116, 139, 0.28);
+  --border-glow: rgba(37, 99, 235, 0.35);
+  --primary-glow: rgba(37, 99, 235, 0.18);
+  --success-glow: rgba(16, 185, 129, 0.18);
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #64748b;
+  color-scheme: light;
+}
+
+html[data-theme="light"] body {
+  background-image:
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.06) 0px, transparent 50%);
+}
+
+html[data-theme="light"] .app-header { background: rgba(255, 255, 255, 0.9); border-bottom-color: var(--border-color); }
+html[data-theme="light"] .excel-picker-box { background: #f8fafc; }
+html[data-theme="light"] .excel-select { background: #ffffff; color: #1d4ed8; }
+html[data-theme="light"] .panel-header,
+html[data-theme="light"] .panel-footer { background: #f8fafc; }
+html[data-theme="light"] .tool-btn { background: #f1f5f9; color: var(--text-muted); }
+html[data-theme="light"] .tool-btn:hover { background: #e2e8f0; color: var(--text-main); }
+html[data-theme="light"] .page-tabs { background: #f1f5f9; }
+html[data-theme="light"] .dropzone-area { background: #f8fafc; }
+html[data-theme="light"] .canvas-viewport { background: radial-gradient(circle at center, #e2e8f0 0%, #cbd5e1 100%); }
+html[data-theme="light"] .viewport-hint { background: rgba(255, 255, 255, 0.92); border-color: var(--border-color); color: var(--text-muted); }
+html[data-theme="light"] .metadata-grid { background: #f8fafc; }
+html[data-theme="light"] .form-input,
+html[data-theme="light"] .hour-input { background: #ffffff; color: var(--text-main); border-color: var(--border-color); }
+html[data-theme="light"] .form-input:focus,
+html[data-theme="light"] .hour-input:focus { background: #ffffff; }
+html[data-theme="light"] .form-input::placeholder { color: #94a3b8; }
+html[data-theme="light"] .table-container { background: #ffffff; }
+html[data-theme="light"] .table-container::-webkit-scrollbar-track { background: #f1f5f9; }
+html[data-theme="light"] .presenze-table th { background: #f1f5f9; color: var(--text-muted); }
+html[data-theme="light"] .presenze-table tr:hover { background: #f8fafc; }
+html[data-theme="light"] .presenze-table tr.turno-2 { background: rgba(139, 92, 246, 0.08); }
+html[data-theme="light"] .presenze-table tr.turno-2:hover { background: rgba(139, 92, 246, 0.13); }
+html[data-theme="light"] .detection-banner { background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(124, 58, 237, 0.08)); }
+html[data-theme="light"] .tot-badge.normal { color: #047857; }
+html[data-theme="light"] .tot-badge.high { color: #6d28d9; }
+html[data-theme="light"] .tot-badge.overtime { color: #b45309; }
+html[data-theme="light"] .conflict-item { background: #fffbeb; }
+html[data-theme="light"] .modal-box { background: #ffffff; }
+html[data-theme="light"] #batchListContainer { background: #f8fafc !important; border-color: var(--border-color) !important; }
+html[data-theme="light"] #batchProgressBar { box-shadow: none; }
+html[data-theme="light"] #batchProgressArea > div:last-child { background: #e2e8f0 !important; border-color: var(--border-color) !important; }
+html[data-theme="light"] .toast { box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12); }
+
+/* Pulsante del tema nell'intestazione */
+.btn-theme {
+  width: 38px;
+  padding: 0;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+/* Tema chiaro: testi che sul fondo chiaro erano poco leggibili */
+html[data-theme="light"] .banner-text h4 { color: #1e3a8a; }
+html[data-theme="light"] .btn-new-month { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(5, 150, 105, 0.45); }
+html[data-theme="light"] .btn-new-month:hover { color: #ffffff; background: #059669; }
+html[data-theme="light"] .brand-text h1 span.tag { color: #1d4ed8; background: rgba(37, 99, 235, 0.1); }

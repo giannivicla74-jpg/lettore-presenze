@@ -8,6 +8,10 @@
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0b0f19">
+  <script>
+    // Tema scelto dall'utente, applicato prima che la pagina compaia (niente lampo scuro -> chiaro)
+    try { if (localStorage.getItem('tema') === 'chiaro') document.documentElement.dataset.theme = 'light'; } catch (_) {}
+  </script>
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- PDF.js per rendering client-side ad altissima definizione -->
@@ -43,6 +47,8 @@
       <button class="btn-primary" id="btnOpenBatch" style="padding: 7px 14px; font-size: 0.82rem; background: linear-gradient(135deg, #8b5cf6, #6366f1); border-color: rgba(167, 139, 250, 0.4);" title="Elabora automaticamente più PDF/rapportini uno dopo l'altro">
         ⚡ Scansione Multipla
       </button>
+
+      <button class="btn-icon btn-theme" id="btnTheme" title="Passa al tema chiaro">☀️</button>
 
       <button class="btn-icon" id="btnOpenSettings">
         ⚙️ Configura API Key

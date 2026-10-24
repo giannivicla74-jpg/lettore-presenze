@@ -83,6 +83,28 @@ const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const btnTestApiKey = document.getElementById('btnTestApiKey');
 const apiKeyTestStatus = document.getElementById('apiKeyTestStatus');
 
+// Tema chiaro/scuro: la scelta resta salvata nel browser di questo PC
+const btnTheme = document.getElementById('btnTheme');
+function applyTheme(tema) {
+  const chiaro = tema === 'chiaro';
+  if (chiaro) document.documentElement.dataset.theme = 'light';
+  else delete document.documentElement.dataset.theme;
+  if (btnTheme) {
+    btnTheme.textContent = chiaro ? '🌙' : '☀️';
+    btnTheme.title = chiaro ? 'Passa al tema scuro' : 'Passa al tema chiaro';
+  }
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = chiaro ? '#ffffff' : '#0b0f19';
+}
+applyTheme(localStorage.getItem('tema') === 'chiaro' ? 'chiaro' : 'scuro');
+if (btnTheme) {
+  btnTheme.addEventListener('click', () => {
+    const nuovo = document.documentElement.dataset.theme === 'light' ? 'scuro' : 'chiaro';
+    localStorage.setItem('tema', nuovo);
+    applyTheme(nuovo);
+  });
+}
+
 // Carica API Key da localStorage
 const savedApiKey = localStorage.getItem('gemini_api_key') || '';
 if (geminiApiKeyInput) geminiApiKeyInput.value = savedApiKey;
