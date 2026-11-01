@@ -1741,6 +1741,10 @@ btnClearTable.addEventListener('click', () => {
 // Ordine: file chiuso in Excel -> conflitti -> copia di sicurezza con data e ora -> scrittura
 async function writeRecordsToExcel(day, records, onConflict = 'ask') {
   const fileName = state.selectedExcelPath;
+  // Durata di ogni fase, mostrata dopo la scrittura per capire dove si perde tempo (disco, antivirus, controlli del browser)
+  const tempi = [];
+  let t0 = performance.now();
+  const fase = nome => { const now = performance.now(); tempi.push([nome, now - t0]); t0 = now; };
   try {
     if (!cartellaPronta) throw new Error('cartella dei file Excel non collegata (barra in alto)');
     if (!fileName) throw new Error('nessun file Excel selezionato alla voce MESE');
@@ -1749,20 +1753,28 @@ async function writeRecordsToExcel(day, records, onConflict = 'ask') {
     }
 
     const bytes = await CartellaExcel.readBytes(fileName);
+    fase('lettura');
     if (onConflict !== 'overwrite') {
       const conflicts = await ExcelXlsm.findConflicts(bytes, day, records);
       if (conflicts.length > 0) return { success: false, conflicts, fileName };
+      fase('controllo dati');
     }
 
     try {
       await CartellaExcel.datedBackup(fileName, bytes);
+      fase('copia di sicurezza');
     } catch (e) {
       throw new Error(`Copia di sicurezza non riuscita (${e.message}): scrittura annullata, Excel non è stato modificato`);
     }
 
     const result = await ExcelXlsm.writePresenze(bytes, day, records);
+    fase('modifica foglio');
     await CartellaExcel.writeBytes(fileName, result.bytes);
-    return { success: true, fileName, countUpdated: result.countUpdated };
+    fase('salvataggio');
+    const s = ms => (ms / 1000).toFixed(1).replace('.', ',') + 's';
+    const totale = tempi.reduce((a, [, ms]) => a + ms, 0);
+    const tempiTesto = `⏱ scrittura ${s(totale)}: ${tempi.map(([n, ms]) => `${n} ${s(ms)}`).join(' · ')}`;
+    return { success: true, fileName, countUpdated: result.countUpdated, tempiTesto };
   } catch (err) {
     // Excel aperto senza file di blocco visibile: il browser non riesce a sostituire il file
     const msg = /NoModificationAllowed|InvalidState|being used|in uso/i.test(`${err.name} ${err.message}`)
@@ -1868,7 +1880,8 @@ btnWriteExcel.addEventListener('click', async () => {
       bannerTitle.textContent = `Registrazione Completata su ${targetName} (Giorno ${day})`;
       bannerDesc.textContent = `${records.length} turni scritti e verificati` +
         (skipped ? ` (${skipped} lasciati com'erano perché già presenti)` : '') +
-        `. Tutte le formule delle colonne L:R sono aggiornate automaticamente!`;
+        `. Tutte le formule delle colonne L:R sono aggiornate automaticamente!` +
+        (result.tempiTesto ? ` • ${result.tempiTesto}` : '');
       finishBatchReview(day, records.length);
     } else {
       showToast(`Errore durante la scrittura: ${result.error}`, 'error');
