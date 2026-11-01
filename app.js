@@ -353,12 +353,22 @@ fileInput.addEventListener('change', (e) => {
 });
 
 // Elaborazione file caricati
+// Nome del documento caricato accanto al titolo del riquadro (vuoto = nascosto)
+function showDocFileName(name) {
+  const el = document.getElementById('docFileName');
+  if (!el) return;
+  el.textContent = name || '';
+  el.title = name || '';
+  el.hidden = !name;
+}
+
 async function handleFiles(files) {
   state.pageImages = [];
   state.backRotation = 180;
   state.reviewingBatchItem = null; // un documento nuovo non è più il rapportino in controllo
   const file = files[0];
   if (!file) return;
+  showDocFileName(files.length > 1 ? `${file.name} (+${files.length - 1})` : file.name);
 
   const isPdf = (file.name && file.name.toLowerCase().endsWith('.pdf')) || file.type === 'application/pdf';
 
@@ -1722,6 +1732,7 @@ btnClearTable.addEventListener('click', () => {
   state.currentPdf = null;
   state.pageImages = [];
   state.reviewingBatchItem = null;
+  showDocFileName('');
   state.currentPageIndex = 0;
   state.rotationDegrees = 0;
   state.backRotation = 180;
@@ -2024,6 +2035,7 @@ function updateBatchUI() {
 // La scansione può continuare in sottofondo; dopo "Conferma e scrivi su Excel" il rapportino risulta scritto
 function openBatchItemForReview(item) {
   if (!item || item.status !== 'review') return;
+  showDocFileName(item.file.name);
   state.pageImages = item.images;
   state.backRotation = 180;
   pageTabs.style.display = item.images.length > 1 ? 'flex' : 'none';

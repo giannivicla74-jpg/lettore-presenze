@@ -1100,3 +1100,25 @@ html[data-theme="light"] .banner-text h4 { color: #1e3a8a; }
 html[data-theme="light"] .btn-new-month { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(5, 150, 105, 0.45); }
 html[data-theme="light"] .btn-new-month:hover { color: #ffffff; background: #059669; }
 html[data-theme="light"] .brand-text h1 span.tag { color: #1d4ed8; background: rgba(37, 99, 235, 0.1); }
+
+/* Nome del PDF caricato, su una riga sotto il titolo "Scansione Rapportino Cartaceo" */
+.panel-title { min-width: 0; }
+.panel-title-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.panel-title-text > span:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doc-file-name {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
