@@ -1738,7 +1738,7 @@ btnClearTable.addEventListener('click', () => {
 
 // Scrittura dei turni nel file Excel attivo. onConflict 'ask': se in Excel ci sono già dati diversi per quegli
 // operai/turni non scrive e restituisce { conflicts }; 'overwrite': scrive comunque.
-// Ordine: file chiuso in Excel -> conflitti -> copia di sicurezza con data e ora -> scrittura
+// Ordine: file chiuso in Excel -> conflitti -> copia di sicurezza (la prima del giorno) -> scrittura
 async function writeRecordsToExcel(day, records, onConflict = 'ask') {
   const fileName = state.selectedExcelPath;
   // Durata di ogni fase, mostrata dopo la scrittura per capire dove si perde tempo (disco, antivirus, controlli del browser)
@@ -1760,11 +1760,18 @@ async function writeRecordsToExcel(day, records, onConflict = 'ask') {
       fase('controllo dati');
     }
 
-    try {
-      await CartellaExcel.datedBackup(fileName, bytes);
-      fase('copia di sicurezza');
-    } catch (e) {
-      throw new Error(`Copia di sicurezza non riuscita (${e.message}): scrittura annullata, Excel non è stato modificato`);
+    // Copia di sicurezza una volta al giorno per file, alla prima scrittura della giornata: sul NAS ogni
+    // salvataggio di un .xlsm passa dalla rete e dai controlli di browser e antivirus, e la copia raddoppiava i tempi
+    const oggi = new Date().toLocaleDateString('sv-SE'); // AAAA-MM-GG
+    const chiaveCopia = `ultima_copia:${CartellaExcel.name()}/${fileName}`;
+    if (localStorage.getItem(chiaveCopia) !== oggi) {
+      try {
+        await CartellaExcel.datedBackup(fileName, bytes);
+        localStorage.setItem(chiaveCopia, oggi);
+        fase('copia di sicurezza del giorno');
+      } catch (e) {
+        throw new Error(`Copia di sicurezza non riuscita (${e.message}): scrittura annullata, Excel non è stato modificato`);
+      }
     }
 
     const result = await ExcelXlsm.writePresenze(bytes, day, records);

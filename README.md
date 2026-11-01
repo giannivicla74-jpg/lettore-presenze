@@ -20,7 +20,7 @@ Funziona interamente nel browser (Microsoft Edge o Google Chrome): non serve ins
 
 ## Protezioni
 
-- Prima di ogni scrittura viene salvata una copia del file Excel con data e ora nella sottocartella `Backup` (ultime 20 copie).
+- Alla prima scrittura di ogni giorno viene salvata una copia del file Excel con data e ora nella sottocartella `Backup` (ultime 20 copie per file).
 - Se in Excel ci sono già dati diversi per gli stessi operai e turni, l'app chiede cosa fare prima di sovrascrivere.
 - Se il file è aperto in Excel, la scrittura viene fermata.
 - Nella scansione multipla i rapportini con dubbi non vengono scritti finché non li controlli.
