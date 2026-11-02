@@ -22,6 +22,14 @@ const state = {
   availableExcelFiles: []
 };
 
+// Numero di versione nella scritta in alto (il valore sta in version.js)
+(() => {
+  const tag = document.getElementById('appVersionTag');
+  if (!tag || !window.APP_VERSION) return;
+  tag.innerHTML = `AI Vision <span class="ver">v${window.APP_VERSION}</span>`;
+  tag.title = `Versione ${window.APP_VERSION} del ${window.APP_VERSION_DATE || ''}`.trim();
+})();
+
 // Inizializzazione PDF.js
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdf.worker.min.js';
