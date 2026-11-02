@@ -64,11 +64,72 @@ const statHours = document.getElementById('statHours');
 // Tasto espandi/riduci tabella
 const btnToggleWide = document.getElementById('btnToggleWide');
 const appContainer = document.querySelector('.app-container');
+// Barra divisoria trascinabile: larghezza del rapportino scelta a mano (ricordata nel browser)
+const SPLIT_KEY = 'larghezza_rapportino';
+const SPLIT_MIN_VIEWER = 300;  // il rapportino non scende sotto questa larghezza
+const SPLIT_MIN_EDITOR = 810;  // la tabella resta sempre intera e leggibile (misurato: sotto 800px compare lo scorrimento)
+let splitViewerPx = null;      // null = misura normale
+try { const v = parseInt(localStorage.getItem(SPLIT_KEY)); if (v > 0) splitViewerPx = v; } catch (_) {}
+
+function applySplit() {
+  if (!appContainer) return;
+  if (appContainer.classList.contains('wide-mode') || !splitViewerPx) {
+    appContainer.style.gridTemplateColumns = '';
+    return;
+  }
+  const cs = getComputedStyle(appContainer);
+  const inner = appContainer.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16; // 8px barra + 2 spazi da 4px
+  const max = Math.max(SPLIT_MIN_VIEWER, inner - SPLIT_MIN_EDITOR);
+  const w = Math.round(Math.min(Math.max(splitViewerPx, SPLIT_MIN_VIEWER), max));
+  appContainer.style.gridTemplateColumns = `${w}px 8px minmax(0, 1fr)`;
+}
+
+const splitHandle = document.getElementById('splitHandle');
+if (splitHandle && appContainer) {
+  let dragging = false;
+  splitHandle.addEventListener('pointerdown', (e) => {
+    if (appContainer.classList.contains('wide-mode')) return;
+    dragging = true;
+    try { splitHandle.setPointerCapture(e.pointerId); } catch (_) {}
+    splitHandle.classList.add('dragging');
+    appContainer.classList.add('split-dragging');
+    e.preventDefault();
+  });
+  splitHandle.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const rect = appContainer.getBoundingClientRect();
+    const padLeft = parseFloat(getComputedStyle(appContainer).paddingLeft);
+    splitViewerPx = e.clientX - rect.left - padLeft - 8;
+    applySplit();
+  });
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    splitHandle.classList.remove('dragging');
+    appContainer.classList.remove('split-dragging');
+    const viewerPanel = appContainer.querySelector('.viewer-panel');
+    if (viewerPanel) splitViewerPx = Math.round(viewerPanel.getBoundingClientRect().width); // misura effettiva dopo i limiti
+    try { localStorage.setItem(SPLIT_KEY, String(splitViewerPx)); } catch (_) {}
+    // Lo zoom scelto resta com'è: il rapportino rimane centrato nello spazio nuovo
+  };
+  splitHandle.addEventListener('pointerup', endDrag);
+  splitHandle.addEventListener('pointercancel', endDrag);
+  // Doppio clic: torna alla misura normale
+  splitHandle.addEventListener('dblclick', () => {
+    splitViewerPx = null;
+    try { localStorage.removeItem(SPLIT_KEY); } catch (_) {}
+    applySplit();
+  });
+  window.addEventListener('resize', applySplit);
+  applySplit();
+}
+
 if (btnToggleWide && appContainer) {
   btnToggleWide.addEventListener('click', () => {
     appContainer.classList.toggle('wide-mode');
     const isWide = appContainer.classList.contains('wide-mode');
     btnToggleWide.textContent = isWide ? '⚖️ Vista 50/50' : '⛶ Allarga Tabella';
+    applySplit(); // con "Allarga Tabella" vale la sua misura; togliendolo torna quella scelta con la barra
     setTimeout(() => { if (typeof fitToViewport === 'function') fitToViewport(); }, 320);
   });
 }
