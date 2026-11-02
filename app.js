@@ -856,12 +856,14 @@ Per OGNI blocco che contiene almeno un valore scritto a mano, trascrivi:
 - commessa_turno1 / commessa_turno2: il codice di commessa scritto a mano nella colonna Commessa della riga 1 / riga 2 (es. "CA 4-3695", "CA 4-3696"). Le due righe possono avere commesse DIVERSE che differiscono anche di una sola cifra: leggi ogni riga cifra per cifra, senza copiare una riga nell'altra. Se la casella è vuota o contiene solo orari/sigle scrivi "" (stringa vuota). Non copiare nulla da altre parti del foglio e non inserire località.
 - entrata_turno1 / uscita_turno1 / entrata_turno2 / uscita_turno2: gli orari scritti nelle colonne Entrata e Uscita della riga 1 / riga 2 della tabella TURNO DI LAVORO ("" se la casella è vuota).
 - turno1 / turno2: i numeri scritti nella colonna "1° TURNO" / "2° TURNO" del riquadro ore, riga per riga: or = Ord. D, sd = Straord. D, on = Ord. N, sn = Straord. N, v = Viaggio, rol = ROL.
+- colonna_compilata: guarda il riquadro ore e indica quale colonna contiene numeri scritti a mano: "1" se solo la colonna di SINISTRA (1° TURNO), "2" se solo la colonna di DESTRA (2° TURNO), "entrambe" se tutte e due.
 - totale_ore_riquadro: il numero scritto nella casella TOTALE ORE del riquadro (0 se non leggibile).
 
 REGOLE DI LETTURA (tassative):
 - Casella vuota = 0. La virgola è decimale ("0,5" significa 0.5).
 - Un valore cancellato (barrato, scarabocchiato, annerito) NON vale: la casella conta come vuota. Trascrivi solo i valori leggibili e non cancellati.
 - Un numero va in un campo SOLO se è scritto nella casella di quella riga E di quella colonna. Non spostare valori da una colonna all'altra, non inventare, non arrotondare, non usare 8 come valore predefinito.
+- Nel riquadro ore la colonna "1° TURNO" è quella di SINISTRA e la colonna "2° TURNO" è quella di DESTRA. Spesso è compilata una sola colonna: se i numeri sono nella colonna di DESTRA e quella di sinistra è vuota, vanno in turno2 e turno1 resta tutto 0. Il turno si decide SOLO dalla colonna del riquadro ore, non dagli orari della tabella TURNO DI LAVORO.
 - Un blocco senza nessun valore scritto va omesso.
 - Trascrivi ogni casella così com'è scritta, anche se la somma non coincide con TOTALE ORE: non correggere, non togliere e non aggiungere valori per far quadrare i conti (le differenze vengono segnalate a parte).
 
@@ -881,6 +883,7 @@ Restituisci ESCLUSIVAMENTE un oggetto JSON valido con questa struttura (gli zeri
       "uscita_turno2": "",
       "turno1": { "or": 0, "sd": 0, "on": 0, "sn": 0, "v": 0, "rol": 0 },
       "turno2": { "or": 0, "sd": 0, "on": 0, "sn": 0, "v": 0, "rol": 0 },
+      "colonna_compilata": "1 oppure 2 oppure entrambe",
       "totale_ore_riquadro": 0
     }
   ]
@@ -1044,9 +1047,21 @@ function mergeFrontAndBack(front, back, commesseList = []) {
     comm2: toList(snapCommessaToFront(String(b.commessa_turno2 || '').trim(), commessaFronte)),
     t1: mk(b.turno1),
     t2: mk(b.turno2),
+    colonna: String(b.colonna_compilata || '').trim().toLowerCase(),
     totale: toNum(b.totale_ore_riquadro)
   })).filter(tb => sumHours(tb.t1) + sumHours(tb.t2) > 0);
-  // Le ore restano sempre nel turno della colonna in cui sono scritte (1° TURNO / 2° TURNO), senza spostamenti
+
+  // Le ore restano nel turno della colonna in cui sono scritte (1° TURNO / 2° TURNO).
+  // Doppio controllo: se l'AI dice che è compilata una sola colonna ma ha messo i numeri nell'altra,
+  // vale la colonna dichiarata (succede quando la colonna 1° TURNO è vuota)
+  tables.forEach(tb => {
+    const solo1 = /^1/.test(tb.colonna), solo2 = /^2/.test(tb.colonna);
+    const has1 = sumHours(tb.t1) > 0, has2 = sumHours(tb.t2) > 0;
+    if ((solo2 && has1 && !has2) || (solo1 && has2 && !has1)) {
+      [tb.t1, tb.t2] = [tb.t2, tb.t1];
+      notes.push(`Blocco ${tb.posizione}: ore scritte nella colonna ${solo2 ? '2° TURNO' : '1° TURNO'} → assegnate al ${solo2 ? '2°' : '1°'} turno, verifica`);
+    }
+  });
 
   tables.forEach(tb => {
     const somma = sumHours(tb.t1) + sumHours(tb.t2);
