@@ -368,6 +368,11 @@ function showDocFileName(name) {
   el.textContent = name || '';
   el.title = name || '';
   el.hidden = !name;
+  // Con un documento caricato il riquadro di caricamento diventa una riga sottile
+  const compactName = document.getElementById('dropzoneCompactName');
+  if (compactName) compactName.textContent = name || '';
+  dropzone.classList.toggle('compact', !!name);
+  dropzone.title = name ? 'Clicca o trascina qui un altro rapportino per cambiare file' : '';
 }
 
 async function handleFiles(files) {

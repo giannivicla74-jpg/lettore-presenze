@@ -390,6 +390,22 @@ body {
   color: var(--text-dim);
 }
 
+/* Dopo il caricamento il riquadro diventa una riga sottile: più spazio per il rapportino */
+.dropzone-compact { display: none; }
+.dropzone-area.compact { padding: 7px 14px; margin: 8px 20px; }
+.dropzone-area.compact .dropzone-icon,
+.dropzone-area.compact .dropzone-title,
+.dropzone-area.compact .dropzone-desc { display: none; }
+.dropzone-area.compact .dropzone-compact {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dropzone-area.compact .dropzone-compact b { color: var(--primary); font-weight: 600; }
+
 /* Canvas Viewport con Pan & Zoom fluido */
 .canvas-viewport {
   flex: 1;
