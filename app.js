@@ -1044,19 +1044,9 @@ function mergeFrontAndBack(front, back, commesseList = []) {
     comm2: toList(snapCommessaToFront(String(b.commessa_turno2 || '').trim(), commessaFronte)),
     t1: mk(b.turno1),
     t2: mk(b.turno2),
-    riga1: !!(String(b.entrata_turno1 || '').trim() || String(b.uscita_turno1 || '').trim()),
-    riga2: !!(String(b.entrata_turno2 || '').trim() || String(b.uscita_turno2 || '').trim()),
     totale: toNum(b.totale_ore_riquadro)
   })).filter(tb => sumHours(tb.t1) + sumHours(tb.t2) > 0);
-
-  // Turno unico: se la riga 2 della tabella TURNO DI LAVORO non ha orari, le ore scritte nella
-  // colonna "2° TURNO" sono una correzione del 1° turno (es. valore cancellato e riscritto accanto)
-  tables.forEach(tb => {
-    if (tb.riga1 && !tb.riga2 && sumHours(tb.t2) > 0) {
-      ['or', 'sd', 'on', 'sn', 'v', 'rol'].forEach(k => { tb.t1[k] += tb.t2[k]; tb.t2[k] = 0; });
-      notes.push(`Blocco ${tb.posizione}: ore in colonna 2° turno ma un solo turno con orari → riportate nel 1° turno, verifica`);
-    }
-  });
+  // Le ore restano sempre nel turno della colonna in cui sono scritte (1° TURNO / 2° TURNO), senza spostamenti
 
   tables.forEach(tb => {
     const somma = sumHours(tb.t1) + sumHours(tb.t2);
